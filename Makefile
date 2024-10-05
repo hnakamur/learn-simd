@@ -1,14 +1,17 @@
 .POSIX:
 CC     = cc
-CFLAGS = -W -O -march=x86-64-v3 -g
+CFLAGS = -W -O3 -march=x86-64-v3 -g
 
-C_FILES = index_of_byte.c
-H_FILES =
-EXECUTABLES = index_of_byte
+C_FILES = index_of_byte.c bytes.c test_bytes_eq.c
+H_FILES = bytes.h
+EXECUTABLES = index_of_byte test_bytes_eq
 
 all: $(EXECUTABLES)
 
-index_of_byte: index_of_byte.o
+index_of_byte: index_of_byte.o bytes.o
+	$(CC) $^ -o $@
+
+test_bytes_eq: test_bytes_eq.o bytes.o
 	$(CC) $^ -o $@
 
 include dependency.mk

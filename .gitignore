@@ -1,2 +1,3 @@
 *.o
 index_of_byte
+test_bytes_eq
