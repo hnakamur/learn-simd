@@ -1,18 +1,22 @@
 .POSIX:
-CC     = cc
+CC     = clang
 CFLAGS = -W -O3 -march=x86-64-v3 -g
+LDFLAGS =
 
-C_FILES = index_of_byte.c bytes.c test_bytes_eq.c
-H_FILES = bytes.h
-EXECUTABLES = index_of_byte test_bytes_eq
+C_FILES = index_of_byte.c bytes.c http_parse.c test_bytes_eq.c test_parse_method.c
+H_FILES = bytes.h http_parse.h
+EXECUTABLES = index_of_byte test_bytes_eq test_parse_method
 
 all: $(EXECUTABLES)
 
-index_of_byte: index_of_byte.o bytes.o
-	$(CC) $^ -o $@
+test_parse_method: test_parse_method.o http_parse.o
+	$(CC) $^ -o $@ $(LDFLAGS)
 
 test_bytes_eq: test_bytes_eq.o bytes.o
-	$(CC) $^ -o $@
+	$(CC) $^ -o $@ $(LDFLAGS)
+
+index_of_byte: index_of_byte.o bytes.o
+	$(CC) $^ -o $@ $(LDFLAGS)
 
 include dependency.mk
 

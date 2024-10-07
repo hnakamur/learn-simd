@@ -1,3 +1,4 @@
 *.o
 index_of_byte
 test_bytes_eq
+test_parse_method
