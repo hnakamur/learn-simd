@@ -879,19 +879,35 @@ void bench(const char *name, uint64_t (*f)(const uint8_t b[], int blen), const u
     printf("%s\t%.9fs rc=%lu\n", name, elapsed_time, rc);
 }
 
+#include <emmintrin.h>
+
 int main() {
     http_request r;
     #define B1LEN 16
-    const uint8_t b1[B1LEN] = {'G', 'E', 'T', ' ', '/', ' ', 'H', 'T', 'T', 'P', '/', '1', '.', '1', '\r', '\n'};
+    const uint8_t b1[B1LEN] = {
+        'G', 'E', 'T', ' ', '/', ' ', 'H', 'T', 'T', 'P', '/', '1', '.', '1', '\r', '\n'};
     #define B2LEN 22
-    const uint8_t b2[B2LEN] = {'P', 'R', 'O', 'P', 'P', 'A', 'T', 'C', 'H', ' ', '/', ' ', 'H', 'T', 'T', 'P',
-                               '/', '1', '.', '1', '\r', '\n'};
+    const uint8_t b2[B2LEN] = {
+        'P', 'R', 'O', 'P', 'P', 'A', 'T', 'C', 'H', ' ', '/', ' ', 'H', 'T', 'T', 'P',
+        '/', '1', '.', '1', '\r', '\n'};
     #define B3LEN 17
-    const uint8_t b3[B3LEN] = {'P', 'O', 'S', 'T', ' ', '/', ' ', 'H', 'T', 'T', 'P', '/', '1', '.', '1', '\r',
-                               '\n'};
+    const uint8_t b3[B3LEN] = {
+        'P', 'O', 'S', 'T', ' ', '/', ' ', 'H', 'T', 'T', 'P', '/', '1', '.', '1', '\r',
+        '\n'};
     #define B4LEN 17
-    const uint8_t b4[B4LEN] = {'H', 'E', 'A', 'D', ' ', '/', ' ', 'H', 'T', 'T', 'P', '/', '1', '.', '1', '\r',
-                               '\n'};
+    const uint8_t b4[B4LEN] = {
+        'H', 'E', 'A', 'D', ' ', '/', ' ', 'H', 'T', 'T', 'P', '/', '1', '.', '1', '\r',
+        '\n'};
+    #define B5LEN 18
+    const uint8_t b5[B5LEN] = {
+        'Q', 'U', 'E', 'R', 'Y', ' ', '/', ' ', 'H', 'T', 'T', 'P', '/', '1', '.', '1',
+        '\r', '\n'};
+    #define B6LEN 16
+    const uint8_t b6[B6LEN] = {
+        'g', 'e', 't', ' ', '/', ' ', 'H', 'T', 'T', 'P', '/', '1', '.', '1', '\r', '\n'};
+    #define B7LEN 16
+    const uint8_t b7[B7LEN] = {
+        'A', 'Z', 'A', ' ', '/', ' ', 'H', 'T', 'T', 'P', '/', '1', '.', '1', '\r', '\n'};
 
     {
         int rc = ngx_http_parse_method(&r, b1, B1LEN);
@@ -948,7 +964,47 @@ int main() {
         assert(r.method == NGX_HTTP_HEAD);
         assert(r.method_end == b4 + sizeof("HEAD") - 2);
     }
- 
+
+    {
+        int rc = ngx_http_parse_method(&r, b5, B5LEN);
+        assert(rc == NGX_AGAIN);
+        assert(r.method == NGX_HTTP_UNKNOWN);
+        assert(r.method_end == b5 + sizeof("QUERY") - 2);
+
+        r.method = NGX_HTTP_UNKNOWN;
+        r.state = 0;
+        rc = http_parse_request_line(&r, b5, B5LEN);
+        assert(rc == NGX_AGAIN);
+        assert(r.method == NGX_HTTP_UNKNOWN);
+        assert(r.method_end == b5 + sizeof("QUERY") - 2);
+    }
+
+    {
+        int rc = ngx_http_parse_method(&r, b6, B6LEN);
+        assert(rc == NGX_HTTP_PARSE_INVALID_METHOD);
+        assert(r.method == NGX_HTTP_UNKNOWN);
+
+        r.method = NGX_HTTP_UNKNOWN;
+        r.state = 0;
+        rc = http_parse_request_line(&r, b6, B6LEN);
+        assert(rc == NGX_HTTP_PARSE_INVALID_METHOD);
+        assert(r.method == NGX_HTTP_UNKNOWN);
+    }
+
+    {
+        int rc = ngx_http_parse_method(&r, b7, B7LEN);
+        assert(rc == NGX_AGAIN);
+        assert(r.method == NGX_HTTP_UNKNOWN);
+        assert(r.method_end == b7 + sizeof("AZA") - 2);
+
+        r.method = NGX_HTTP_UNKNOWN;
+        r.state = 0;
+        rc = http_parse_request_line(&r, b7, B7LEN);
+        assert(rc == NGX_AGAIN);
+        assert(r.method == NGX_HTTP_UNKNOWN);
+        assert(r.method_end == b7 + sizeof("AZA") - 2);
+    }
+
     bench("ngx_get\t", bench_ngx, b1, B1LEN);
     bench("simd_get", bench_simd, b1, B1LEN);
     bench("ngx_proppatch", bench_ngx, b2, B2LEN);
@@ -957,6 +1013,7 @@ int main() {
     bench("simd_post", bench_simd, b3, B3LEN);
     bench("ngx_head", bench_ngx, b4, B4LEN);
     bench("simd_head", bench_simd, b4, B4LEN);
-
+    bench("ngx_query", bench_ngx, b5, B5LEN);
+    bench("simd_qury", bench_simd, b5, B5LEN);
     return 0;
 }

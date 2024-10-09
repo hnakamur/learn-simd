@@ -75,6 +75,20 @@ bvec16_cmp9(__m128i req_vec, uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3,
         b7, b6, b5, b4, b3, b2, b1, b0))) & 0x1FF) == 0x1FF;
 }
 
+static inline int
+bvec16_is_valid_method(__m128i bv, int n)
+{
+    int m, mask1, mask2, mask3, mask4;
+
+    assert(n > 0 && n <= 16);
+    m = (1 << n) - 1;
+    mask1 = _mm_movemask_epi8(_mm_cmplt_epi8(bv, _mm_set1_epi8('A')));
+    mask2 = _mm_movemask_epi8(_mm_cmpgt_epi8(bv, _mm_set1_epi8('Z')));
+    mask3 = _mm_movemask_epi8(_mm_cmpeq_epi8(bv, _mm_set1_epi8('_')));
+    mask4 = _mm_movemask_epi8(_mm_cmpeq_epi8(bv, _mm_set1_epi8('-')));
+    return (((mask1 | mask2) & ~mask3 & ~mask4) & m) == 0;
+}
+
 int
 http_parse_request_line(http_request *r, const uint8_t b[], int blen)
 {
@@ -179,6 +193,10 @@ http_parse_request_line(http_request *r, const uint8_t b[], int blen)
             break;
         }
         break;
+    }
+
+    if (!bvec16_is_valid_method(req_vec, method_len)) {
+        return NGX_HTTP_PARSE_INVALID_METHOD;
     }
 #endif
 
