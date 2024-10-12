@@ -6,6 +6,14 @@
 #include <stdio.h>
 #include <time.h>
 
+void bench_escape(void *p) {
+    asm volatile("" : : "g"(p) : "memory");
+}
+
+void bench_clobber() {
+    asm volatile("":::"memory");
+}
+
 static int
 is_invalid_method1(__m128i bv, int n)
 {
@@ -261,47 +269,62 @@ is_invalid_method5(__m128i bv, int n)
 
 #define BENCH_REPEAT_COUNT 10000000
 
-uint64_t bench_is_invalid_method1(__m128i method, volatile int n) {
+uint64_t bench_is_invalid_method1(__m128i method, int n) {
     uint64_t sum = 0;
     for (int i = 0; i < BENCH_REPEAT_COUNT; i++) {
+        bench_escape(&method);
+        bench_escape(&n);
         int rc = is_invalid_method1(method, n);
         sum = sum * 13 + rc;
+        bench_clobber();
     }
     return sum;
 }
 
-uint64_t bench_is_invalid_method2(__m128i method, volatile int n) {
+uint64_t bench_is_invalid_method2(__m128i method, int n) {
     uint64_t sum = 0;
     for (int i = 0; i < BENCH_REPEAT_COUNT; i++) {
+        bench_escape(&method);
+        bench_escape(&n);
         int rc = is_invalid_method2(method, n);
         sum = sum * 13 + rc;
+        bench_clobber();
     }
     return sum;
 }
 
-uint64_t bench_is_invalid_method3(__m128i method, volatile int n) {
+uint64_t bench_is_invalid_method3(__m128i method, int n) {
     uint64_t sum = 0;
     for (int i = 0; i < BENCH_REPEAT_COUNT; i++) {
+        bench_escape(&method);
+        bench_escape(&n);
         int rc = is_invalid_method3(method, n);
         sum = sum * 13 + rc;
+        bench_clobber();
     }
     return sum;
 }
 
-uint64_t bench_is_invalid_method4(__m128i method, volatile int n) {
+uint64_t bench_is_invalid_method4(__m128i method, int n) {
     uint64_t sum = 0;
     for (int i = 0; i < BENCH_REPEAT_COUNT; i++) {
+        bench_escape(&method);
+        bench_escape(&n);
         int rc = is_invalid_method4(method, n);
         sum = sum * 13 + rc;
+        bench_clobber();
     }
     return sum;
 }
 
-uint64_t bench_is_invalid_method5(__m128i method, volatile int n) {
+uint64_t bench_is_invalid_method5(__m128i method, int n) {
     uint64_t sum = 0;
     for (int i = 0; i < BENCH_REPEAT_COUNT; i++) {
+        bench_escape(&method);
+        bench_escape(&n);
         int rc = is_invalid_method5(method, n);
         sum = sum * 13 + rc;
+        bench_clobber();
     }
     return sum;
 }
