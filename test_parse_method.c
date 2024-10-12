@@ -75,7 +75,6 @@ typedef uint8_t u_char;
 
 #define LF     (u_char) '\n'
 #define CR     (u_char) '\r'
-#define CRLF   "\r\n"
 
 /* gcc, icc, msvc and others compile these switches as an jump table */
 

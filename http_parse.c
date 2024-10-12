@@ -4,6 +4,8 @@
 #include <emmintrin.h>
 #include <stdio.h>
 
+#ifdef __SSE2__
+
 static inline int
 bvec16_index_of_byte(__m128i bv, uint8_t b)
 {
@@ -76,22 +78,115 @@ bvec16_cmp9(__m128i req_vec, uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3,
 }
 
 static inline int
-bvec16_is_valid_method(__m128i bv, int n)
+bvec16_is_invalid_method(__m128i bv, int n)
 {
-    int m, mask1, mask2, mask3, mask4;
-
     assert(n > 0 && n <= 16);
-    m = (1 << n) - 1;
-    mask1 = _mm_movemask_epi8(_mm_cmplt_epi8(bv, _mm_set1_epi8('A')));
-    mask2 = _mm_movemask_epi8(_mm_cmpgt_epi8(bv, _mm_set1_epi8('Z')));
-    mask3 = _mm_movemask_epi8(_mm_cmpeq_epi8(bv, _mm_set1_epi8('_')));
-    mask4 = _mm_movemask_epi8(_mm_cmpeq_epi8(bv, _mm_set1_epi8('-')));
-    return (((mask1 | mask2) & ~mask3 & ~mask4) & m) == 0;
+    int m = (1 << n) - 1;
+    return (_mm_movemask_epi8(
+        _mm_andnot_si128(
+            _mm_cmpeq_epi8(bv, _mm_set1_epi8('-')),
+            _mm_andnot_si128(
+                _mm_cmpeq_epi8(bv, _mm_set1_epi8('_')),
+                _mm_or_si128(
+                    _mm_cmplt_epi8(bv, _mm_set1_epi8('A')),
+                    _mm_cmpgt_epi8(bv, _mm_set1_epi8('Z'))
+                )
+            )
+        )
+    ) & m) != 0;
 }
+
+#endif
+
+typedef uint8_t u_char;
+
+#define LF     (u_char) '\n'
+#define CR     (u_char) '\r'
 
 int
 http_parse_request_line(http_request *r, const uint8_t b[], int blen)
 {
+    u_char  c, ch, *p, *m;
+    enum {
+        sw_start = 0,
+        sw_newline,
+        sw_method_start,
+        sw_method,
+        sw_spaces_before_uri,
+        sw_schema,
+        sw_schema_slash,
+        sw_schema_slash_slash,
+        sw_host_start,
+        sw_host,
+        sw_host_end,
+        sw_host_ip_literal,
+        sw_port,
+        sw_after_slash_in_uri,
+        sw_check_uri,
+        sw_uri,
+        sw_http_09,
+        sw_http_H,
+        sw_http_HT,
+        sw_http_HTT,
+        sw_http_HTTP,
+        sw_first_major_digit,
+        sw_major_digit,
+        sw_first_minor_digit,
+        sw_minor_digit,
+        sw_spaces_after_digit,
+        sw_almost_done
+    } state;
+
+    state = r->state;
+
+#if 0
+    for (p = b->pos; p < b->last; p++) {
+        ch = *p;
+
+        switch (state) {
+
+        /* HTTP methods: GET, HEAD, POST */
+        case sw_start:
+            r->request_start = p;
+
+            if (ch == CR) {
+                state = sw_newline;
+                break;
+            }
+
+            if (ch == LF) {
+                state = sw_method_start;
+                break;
+            }
+
+            if ((ch < 'A' || ch > 'Z') && ch != '_' && ch != '-') {
+                return NGX_HTTP_PARSE_INVALID_METHOD;
+            }
+
+            state = sw_method;
+            break;
+
+        case sw_newline:
+
+            if (ch == LF) {
+                state = sw_method_start;
+                break;
+            }
+
+            return NGX_HTTP_PARSE_INVALID_REQUEST;
+
+        case sw_method_start:
+            r->request_start = p;
+
+            if ((ch < 'A' || ch > 'Z') && ch != '_' && ch != '-') {
+                return NGX_HTTP_PARSE_INVALID_METHOD;
+            }
+
+            state = sw_method;
+            break;
+
+        case sw_method:
+
     assert(blen >= 16);
 
 #ifdef __SSE2__
@@ -195,10 +290,33 @@ http_parse_request_line(http_request *r, const uint8_t b[], int blen)
         break;
     }
 
-    if (!bvec16_is_valid_method(req_vec, method_len)) {
+    if (bvec16_is_invalid_method(req_vec, method_len)) {
         return NGX_HTTP_PARSE_INVALID_METHOD;
     }
 #endif
 
+        }
+    }
+
+    // b->pos = p;
+    // r->state = state;
+
     return NGX_AGAIN;
+
+done:
+
+    // b->pos = p + 1;
+
+    // if (r->request_end == NULL) {
+    //     r->request_end = p;
+    // }
+
+    // r->http_version = r->http_major * 1000 + r->http_minor;
+    // r->state = sw_start;
+
+    // if (r->http_version == 9 && r->method != NGX_HTTP_GET) {
+    //     return NGX_HTTP_PARSE_INVALID_09_METHOD;
+    // }
+#endif
+    return NGX_OK;
 }
