@@ -35,7 +35,7 @@ int bench_bytes_eq4(const uint8_t s1[], const uint8_t s2 [], int n) {
 }
 
 
-inline int bytes_eq_scalar(const uint8_t s1[], const uint8_t s2 [], int n) {
+int bytes_eq_scalar(const uint8_t s1[], const uint8_t s2 [], int n) {
     while (n-- > 0) {
         if (*s1++ != *s2++) {
             return 0;
@@ -53,7 +53,7 @@ int bench_bytes_eq_scalar(const uint8_t s1[], const uint8_t s2 [], int n) {
 }
 
 
-inline int bytes_eq_impl2(const uint8_t s1[], const uint8_t s2 [], int n) {
+int bytes_eq_impl2(const uint8_t s1[], const uint8_t s2 [], int n) {
     if (((uintptr_t)s1 & 0xF) == 0 && ((uintptr_t)s2 & 0xF) == 0 && n >= 4) {
         if (*(uint32_t *)s1 != *(uint32_t *)s2) {
             return 0;
