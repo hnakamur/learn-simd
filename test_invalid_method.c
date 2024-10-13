@@ -15,6 +15,18 @@ void bench_clobber() {
 }
 
 static int
+is_invalid_method_scalar(uint8_t b[], int n)
+{
+    for (int i = 0; i < n; i++) {
+        uint8_t ch = b[i];
+        if ((ch < 'A' || ch > 'Z') && ch != '_' && ch != '-') {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static int
 is_invalid_method1(__m128i bv, int n)
 {
     // assert(n > 0 && n <= 16);
@@ -267,7 +279,19 @@ is_invalid_method5(__m128i bv, int n)
     return !_mm_testz_si128(m1, m2);
 }
 
-#define BENCH_REPEAT_COUNT 10000000
+#define BENCH_REPEAT_COUNT (1000 * 1000 * 1000)
+
+uint64_t bench_is_invalid_method_scalar(uint8_t b[], int n) {
+    uint64_t sum = 0;
+    for (int i = 0; i < BENCH_REPEAT_COUNT; i++) {
+        bench_escape(b);
+        bench_escape(&n);
+        int rc = is_invalid_method_scalar(b, n);
+        sum = sum * 13 + rc;
+        bench_clobber();
+    }
+    return sum;
+}
 
 uint64_t bench_is_invalid_method1(__m128i method, int n) {
     uint64_t sum = 0;
@@ -331,6 +355,17 @@ uint64_t bench_is_invalid_method5(__m128i method, int n) {
 
 double get_elapsed_time(struct timespec start, struct timespec end) {
     return (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
+}
+
+void bench_scalar(const char *name, uint8_t b[], int n) {
+    struct timespec start, end;
+    double elapsed_time;
+
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    uint64_t rc = bench_is_invalid_method_scalar(b, n);
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    elapsed_time = get_elapsed_time(start, end);
+    printf("%s\t%.9fs rc=%lu\n", name, elapsed_time, rc);
 }
 
 void bench(const char *name, uint64_t (*f)(__m128i method, int n), __m128i method, int n) {
@@ -397,48 +432,59 @@ void bench_all() {
             '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0',
             '\0', '\0', '\0', 'Y', 'R', 'E', 'U', 'Q');
         int n = 5;
+        uint8_t b[5] = {'Q', 'U', 'E', 'R', 'Y'};
+
         printf("case1\n");
-        bench("is_invalid_method1", bench_is_invalid_method1, method, n);
-        bench("is_invalid_method2", bench_is_invalid_method2, method, n);
-        bench("is_invalid_method3", bench_is_invalid_method3, method, n);
-        bench("is_invalid_method4", bench_is_invalid_method4, method, n);
-        bench("is_invalid_method5", bench_is_invalid_method5, method, n);
+        bench_scalar("is_invalid_method_scalar", b, n);
+        bench("is_invalid_method1\t", bench_is_invalid_method1, method, n);
+        bench("is_invalid_method2\t", bench_is_invalid_method2, method, n);
+        bench("is_invalid_method3\t", bench_is_invalid_method3, method, n);
+        bench("is_invalid_method4\t", bench_is_invalid_method4, method, n);
+        bench("is_invalid_method5\t", bench_is_invalid_method5, method, n);
     }
     {
         __m128i method = _mm_set_epi8(
             '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0',
             '\0', '\0', '\0', 'C', '-', 'B', '_', 'A');
         int n = 5;
+        uint8_t b[5] = {'A', '_', 'B', '-', 'C'};
+
         printf("case2\n");
-        bench("is_invalid_method1", bench_is_invalid_method1, method, n);
-        bench("is_invalid_method2", bench_is_invalid_method2, method, n);
-        bench("is_invalid_method3", bench_is_invalid_method3, method, n);
-        bench("is_invalid_method4", bench_is_invalid_method4, method, n);
-        bench("is_invalid_method5", bench_is_invalid_method5, method, n);
+        bench_scalar("is_invalid_method_scalar", b, n);
+        bench("is_invalid_method1\t", bench_is_invalid_method1, method, n);
+        bench("is_invalid_method2\t", bench_is_invalid_method2, method, n);
+        bench("is_invalid_method3\t", bench_is_invalid_method3, method, n);
+        bench("is_invalid_method4\t", bench_is_invalid_method4, method, n);
+        bench("is_invalid_method5\t", bench_is_invalid_method5, method, n);
     }
     {
         __m128i method = _mm_set_epi8(
             '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0',
             '\0', '\0', '!', 'C', '-', 'B', '_', 'A');
         int n = 6;
+        uint8_t b[6] = {'A', '_', 'B', '-', 'C', '!'};
+
         printf("case3\n");
-        bench("is_invalid_method1", bench_is_invalid_method1, method, n);
-        bench("is_invalid_method2", bench_is_invalid_method2, method, n);
-        bench("is_invalid_method3", bench_is_invalid_method3, method, n);
-        bench("is_invalid_method4", bench_is_invalid_method4, method, n);
-        bench("is_invalid_method5", bench_is_invalid_method5, method, n);
+        bench_scalar("is_invalid_method_scalar", b, n);
+        bench("is_invalid_method1\t", bench_is_invalid_method1, method, n);
+        bench("is_invalid_method2\t", bench_is_invalid_method2, method, n);
+        bench("is_invalid_method3\t", bench_is_invalid_method3, method, n);
+        bench("is_invalid_method4\t", bench_is_invalid_method4, method, n);
+        bench("is_invalid_method5\t", bench_is_invalid_method5, method, n);
     }
     {
         __m128i method = _mm_set_epi8(
             '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0',
             '\0', '\0', '\0', 'C', '-', 'B', '_', 'a');
         int n = 5;
+        uint8_t b[5] = {'a', '_', 'B', '-', 'C'};
         printf("case4\n");
-        bench("is_invalid_method1", bench_is_invalid_method1, method, n);
-        bench("is_invalid_method2", bench_is_invalid_method2, method, n);
-        bench("is_invalid_method3", bench_is_invalid_method3, method, n);
-        bench("is_invalid_method4", bench_is_invalid_method4, method, n);
-        bench("is_invalid_method5", bench_is_invalid_method5, method, n);
+        bench_scalar("is_invalid_method_scalar", b, n);
+        bench("is_invalid_method1\t", bench_is_invalid_method1, method, n);
+        bench("is_invalid_method2\t", bench_is_invalid_method2, method, n);
+        bench("is_invalid_method3\t", bench_is_invalid_method3, method, n);
+        bench("is_invalid_method4\t", bench_is_invalid_method4, method, n);
+        bench("is_invalid_method5\t", bench_is_invalid_method5, method, n);
     }
 }
 
