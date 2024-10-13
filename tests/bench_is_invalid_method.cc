@@ -225,6 +225,7 @@ static void BM_is_invalid_method1_case1(benchmark::State &state) {
   int n = 5;
 
   for (auto _ : state) {
+    benchmark::ClobberMemory();
     auto rc = is_invalid_method1(method, n);
     benchmark::DoNotOptimize(rc);
     benchmark::ClobberMemory();
@@ -238,6 +239,7 @@ static void BM_is_invalid_method2_case1(benchmark::State &state) {
   int n = 5;
 
   for (auto _ : state) {
+    benchmark::ClobberMemory();
     auto rc = is_invalid_method2(method, n);
     benchmark::DoNotOptimize(rc);
     benchmark::ClobberMemory();
@@ -251,6 +253,7 @@ static void BM_is_invalid_method3_case1(benchmark::State &state) {
   int n = 5;
 
   for (auto _ : state) {
+    benchmark::ClobberMemory();
     auto rc = is_invalid_method3(method, n);
     benchmark::DoNotOptimize(rc);
     benchmark::ClobberMemory();
@@ -264,6 +267,7 @@ static void BM_is_invalid_method4_case1(benchmark::State &state) {
   int n = 5;
 
   for (auto _ : state) {
+    benchmark::ClobberMemory();
     auto rc = is_invalid_method4(method, n);
     benchmark::DoNotOptimize(rc);
     benchmark::ClobberMemory();
@@ -277,6 +281,7 @@ static void BM_is_invalid_method5_case1(benchmark::State &state) {
   int n = 5;
 
   for (auto _ : state) {
+    benchmark::ClobberMemory();
     auto rc = is_invalid_method5(method, n);
     benchmark::DoNotOptimize(rc);
     benchmark::ClobberMemory();

@@ -8,7 +8,7 @@ include(GoogleTest)
 gtest_discover_tests(sample1_unittest)
 
 add_executable(bench_is_invalid_method bench_is_invalid_method.cc)
-target_compile_options(bench_is_invalid_method PRIVATE -march=x86-64-v3)
+target_compile_options(bench_is_invalid_method PRIVATE -g -march=x86-64-v3)
 target_link_libraries(bench_is_invalid_method PRIVATE benchmark::benchmark)
 add_custom_target(
   bench
