@@ -39,16 +39,53 @@
 
 #define NGX_HTTP_PARSE_INVALID_HEADER      14
 
-typedef struct {
-    int method;
+typedef uintptr_t       ngx_uint_t;
+typedef uint8_t         u_char;
 
-    const uint8_t *request_start;
-    const uint8_t *method_end;
+typedef struct {
+    size_t      len;
+    u_char     *data;
+} ngx_str_t;
+
+typedef struct {
+    int                               method;
+    ngx_uint_t                        http_version;
+
+    const u_char                     *request_start;
+    const u_char                     *method_end;
+
+    ngx_str_t                         http_protocol;
 
     int state;
+
+    /* URI with "/." and on Win32 with "//" */
+    unsigned                          complex_uri:1;
+
+    /* URI with "%" */
+    unsigned                          quoted_uri:1;
+
+    /* URI with "+" */
+    unsigned                          plus_in_uri:1;
+
+    /* URI with empty path */
+    unsigned                          empty_path_in_uri:1;
+
+    u_char                           *uri_start;
+    u_char                           *uri_end;
+    u_char                           *uri_ext;
+    u_char                           *args_start;
+    u_char                           *request_start;
+    u_char                           *request_end;
+    u_char                           *method_end;
+    u_char                           *schema_start;
+    u_char                           *schema_end;
+    u_char                           *host_start;
+    u_char                           *host_end;
+
+    unsigned                          http_minor:16;
+    unsigned                          http_major:16;
 } http_request;
 
-int
-http_parse_request_line(http_request *r, const uint8_t b[], int blen);
+int http_parse_request_line(http_request *r, ngx_buf_t *b);
 
 #endif /* HTTP_PARSE_H_ */
