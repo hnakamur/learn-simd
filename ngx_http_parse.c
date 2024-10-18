@@ -1,5 +1,8 @@
 #include "http_parse.h"
 
+#define NGX_HAVE_LITTLE_ENDIAN 1
+#define NGX_HAVE_NONALIGNED 1
+
 static uint32_t  usual[] = {
     0x00000000, /* 0000 0000 0000 0000  0000 0000 0000 0000 */
 

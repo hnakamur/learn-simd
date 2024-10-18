@@ -1,6 +1,3 @@
-#define NGX_HAVE_LITTLE_ENDIAN 1
-#define NGX_HAVE_NONALIGNED 1
-
 #include "http_parse.h"
 #include "greatest.h"
 #include <time.h>
