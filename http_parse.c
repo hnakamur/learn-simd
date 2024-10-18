@@ -172,6 +172,25 @@ bvec16_is_invalid_method(__m128i bv, int n)
 {
     assert(n > 0 && n <= 16);
     int m = (1 << n) - 1;
+#if 1
+    int mask1 = _mm_movemask_epi8(
+        _mm_or_si128(
+            _mm_cmplt_epi8(bv, _mm_set1_epi8('A')),
+            _mm_cmpgt_epi8(bv, _mm_set1_epi8('Z'))
+        )
+    ) & m;
+    if (mask1 == 0) {
+        return 0;
+    }
+
+    mask1 &= ~(_mm_movemask_epi8(_mm_cmpeq_epi8(bv, _mm_set1_epi8('-'))) & m);
+    if (mask1 == 0) {
+        return 0;
+    }
+
+    mask1 &= ~(_mm_movemask_epi8(_mm_cmpeq_epi8(bv, _mm_set1_epi8('_'))) & m);
+    return mask1 != 0;
+#else    
     return (_mm_movemask_epi8(
         _mm_andnot_si128(
             _mm_cmpeq_epi8(bv, _mm_set1_epi8('-')),
@@ -184,6 +203,7 @@ bvec16_is_invalid_method(__m128i bv, int n)
             )
         )
     ) & m) != 0;
+#endif
 }
 
 #endif
