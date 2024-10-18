@@ -1,10 +1,4 @@
 #include "http_parse.h"
-#include "bytes.h"
-#include <assert.h>
-#include <emmintrin.h>
-#include <stdio.h>
-
-#define NGX_HAVE_AMD64_SIMD_SSE2 1
 
 static uint32_t  usual[] = {
     0x00000000, /* 0000 0000 0000 0000  0000 0000 0000 0000 */
@@ -93,109 +87,12 @@ static uint32_t  usual[] = {
 
 #endif
 
+/* gcc, icc, msvc and others compile these switches as an jump table */
 
-#if (NGX_HAVE_AMD64_SIMD_SSE2)
-
-static inline int
-bvec16_index_of_byte(__m128i bv, uint8_t b)
+ngx_int_t
+ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
 {
-    int mask = _mm_movemask_epi8(_mm_cmpeq_epi8(bv, _mm_set1_epi8(b)));
-    if (mask == 0) {
-        return -1;
-    }
-    return __builtin_ffs(mask) - 1;
-}
-
-static inline int
-bvec16_eq3(__m128i bv, uint8_t b0, uint8_t b1, uint8_t b2)
-{
-    return (_mm_movemask_epi8(_mm_cmpeq_epi8(bv, _mm_set_epi8(
-        '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0',
-        '\0', '\0', '\0', '\0', '\0', b2, b1, b0))) & 0x7) == 0x7;
-}
-
-static inline int
-bvec16_eq4(__m128i bv, uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3)
-{
-    return (_mm_movemask_epi8(_mm_cmpeq_epi8(bv, _mm_set_epi8(
-        '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0',
-        '\0', '\0', '\0', '\0', b3, b2, b1, b0))) & 0xF) == 0xF;
-}
-
-static inline int
-bvec16_eq5(__m128i bv, uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3, 
-            uint8_t b4)
-{
-    return (_mm_movemask_epi8(_mm_cmpeq_epi8(bv, _mm_set_epi8(
-        '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0',
-        '\0', '\0', '\0', b4, b3, b2, b1, b0))) & 0x1F) == 0x1F;
-}
-
-static inline int
-bvec16_eq6(__m128i bv, uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3, 
-            uint8_t b4, uint8_t b5)
-{
-    return (_mm_movemask_epi8(_mm_cmpeq_epi8(bv, _mm_set_epi8(
-        '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0',
-        '\0', '\0', b5, b4, b3, b2, b1, b0))) & 0x3F) == 0x3F;
-}
-
-static inline int
-bvec16_eq7(__m128i bv, uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3, 
-            uint8_t b4, uint8_t b5, uint8_t b6)
-{
-    return (_mm_movemask_epi8(_mm_cmpeq_epi8(bv, _mm_set_epi8(
-        '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0',
-        '\0', b6, b5, b4, b3, b2, b1, b0))) & 0x7F) == 0x7F;
-}
-
-static inline int
-bvec16_eq8(__m128i bv, uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3, 
-            uint8_t b4, uint8_t b5, uint8_t b6, uint8_t b7)
-{
-    return (_mm_movemask_epi8(_mm_cmpeq_epi8(bv, _mm_set_epi8(
-        '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0',
-        b7, b6, b5, b4, b3, b2, b1, b0))) & 0xFF) == 0xFF;
-}
-
-static inline int
-bvec16_eq9(__m128i bv, uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3, 
-            uint8_t b4, uint8_t b5, uint8_t b6, uint8_t b7, uint8_t b8)
-{
-    return (_mm_movemask_epi8(_mm_cmpeq_epi8(bv, _mm_set_epi8(
-        '\0', '\0', '\0', '\0', '\0', '\0', '\0', b8,
-        b7, b6, b5, b4, b3, b2, b1, b0))) & 0x1FF) == 0x1FF;
-}
-
-static inline int
-bvec16_is_invalid_method(__m128i bv, int n)
-{
-    assert(n > 0 && n <= 16);
-    int m = (1 << n) - 1;
-    return (_mm_movemask_epi8(
-        _mm_andnot_si128(
-            _mm_cmpeq_epi8(bv, _mm_set1_epi8('-')),
-            _mm_andnot_si128(
-                _mm_cmpeq_epi8(bv, _mm_set1_epi8('_')),
-                _mm_or_si128(
-                    _mm_cmplt_epi8(bv, _mm_set1_epi8('A')),
-                    _mm_cmpgt_epi8(bv, _mm_set1_epi8('Z'))
-                )
-            )
-        )
-    ) & m) != 0;
-}
-
-#endif
-
-int
-http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
-{
-    int     space_pos;
     u_char  c, ch, *p, *m;
-#if (NGX_HAVE_AMD64_SIMD_SSE2)
-    __m128i method_vec;
-#endif
     enum {
         sw_start = 0,
         sw_newline,
@@ -237,21 +134,6 @@ http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
         case sw_start:
             r->request_start = p;
 
-#if (NGX_HAVE_AMD64_SIMD_SSE2)
-            if (b->last - p < 16) {
-                return NGX_AGAIN;
-            }
-            method_vec = _mm_loadu_si128((__m128i *)p);
-
-            if (bvec16_eq4(method_vec, 'G', 'E', 'T', ' ')) {
-                r->method = NGX_HTTP_GET;
-                p += 2;
-                r->method_end = p;
-                state = sw_spaces_before_uri;
-                break;
-            }
-#endif
-
             if (ch == CR) {
                 state = sw_newline;
                 break;
@@ -262,13 +144,10 @@ http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 break;
             }
 
-#if (NGX_HAVE_AMD64_SIMD_SSE2)
-            --p;
-#else
             if ((ch < 'A' || ch > 'Z') && ch != '_' && ch != '-') {
                 return NGX_HTTP_PARSE_INVALID_METHOD;
             }
-#endif
+
             state = sw_method;
             break;
 
@@ -284,145 +163,14 @@ http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
         case sw_method_start:
             r->request_start = p;
 
-#if (NGX_HAVE_AMD64_SIMD_SSE2)
-            if (b->last - p < 16) {
-                goto again;
-            }
-            method_vec = _mm_loadu_si128((__m128i *)p);
-            --p;
-#else
             if ((ch < 'A' || ch > 'Z') && ch != '_' && ch != '-') {
                 return NGX_HTTP_PARSE_INVALID_METHOD;
             }
-#endif
+
             state = sw_method;
             break;
 
         case sw_method:
-
-#if (NGX_HAVE_AMD64_SIMD_SSE2)
-            space_pos = bvec16_index_of_byte(method_vec, ' ');
-            // printf("p=%.*s, space_pos=%d\n", 16, p, space_pos);
-            if (space_pos != -1) {
-                p += space_pos;
-                r->method_end = p - 1;
-                state = sw_spaces_before_uri;
-                m = r->request_start;
-
-                // printf("method_len=%ld\n", p -m);
-                switch (p - m) {
-                case 3:
-                    if (bvec16_eq3(method_vec, 'G', 'E', 'T')) {
-                        r->method = NGX_HTTP_GET;
-                        break;
-                    }
-                    if (bvec16_eq3(method_vec, 'P', 'U', 'T')) {
-                        r->method = NGX_HTTP_PUT;
-                        break;
-                    }
-                    break;
-
-                case 4:
-                    if (m[1] == 'O') {
-                        // printf("m[1]=O\n");
-                        if (bvec16_eq4(method_vec, 'P', 'O', 'S', 'T')) {
-                            r->method = NGX_HTTP_POST;
-                            break;
-                        }
-                        if (bvec16_eq4(method_vec, 'C', 'O', 'P', 'Y')) {
-                            r->method = NGX_HTTP_COPY;
-                            break;
-                        }
-                        if (bvec16_eq4(method_vec, 'M', 'O', 'V', 'E')) {
-                            r->method = NGX_HTTP_MOVE;
-                            break;
-                        }
-                        if (bvec16_eq4(method_vec, 'L', 'O', 'C', 'K')) {
-                            r->method = NGX_HTTP_LOCK;
-                            break;
-                        }
-                        
-                    } else {
-                        // printf("m[1]!=O\n");
-
-                        if (bvec16_eq4(method_vec, 'H', 'E', 'A', 'D')) {
-                            r->method = NGX_HTTP_HEAD;
-                            break;
-                        }
-                    }
-                    break;
-
-                case 5:
-                    if (bvec16_eq5(method_vec, 'P', 'A', 'T', 'C', 'H')) {
-                        r->method = NGX_HTTP_PATCH;
-                        break;
-                    }
-                    if (bvec16_eq5(method_vec, 'T', 'R', 'A', 'C', 'E')) {
-                        r->method = NGX_HTTP_TRACE;
-                        break;
-                    }
-                    if (bvec16_eq5(method_vec, 'M', 'K', 'C', 'O', 'L')) {
-                        r->method = NGX_HTTP_MKCOL;
-                        break;
-                    }
-                    break;
-
-                case 6:
-                    if (bvec16_eq6(method_vec, 'D', 'E', 'L', 'E', 'T', 'E')) {
-                        r->method = NGX_HTTP_DELETE;
-                        break;
-                    }
-                    if (bvec16_eq6(method_vec, 'U', 'N', 'L', 'O', 'C', 'K')) {
-                        r->method = NGX_HTTP_UNLOCK;
-                        break;
-                    }
-                    break;
-
-                case 7:
-                    if (bvec16_eq7(method_vec, 'O', 'P', 'T', 'I', 'O', 'N', 'S')) {
-                        r->method = NGX_HTTP_OPTIONS;
-                        break;
-                    }
-                    if (bvec16_eq7(method_vec, 'C', 'O', 'N', 'N', 'E', 'C', 'T')) {
-                        r->method = NGX_HTTP_UNLOCK;
-                        break;
-                    }
-                    break;
-
-                case 8:
-                    if (bvec16_eq8(method_vec, 'P', 'R', 'O', 'P', 'F', 'I', 'N', 'D')) {
-                        r->method = NGX_HTTP_PROPFIND;
-                        break;
-                    }
-                    break;
-
-                case 9:
-                    if (bvec16_eq9(method_vec, 'P', 'R', 'O', 'P', 'P', 'A', 'T', 'C', 'H')) {
-                        r->method = NGX_HTTP_PROPPATCH;
-                        break;
-                    }
-                    break;
-                }
-
-                if (space_pos > 0 && bvec16_is_invalid_method(method_vec, space_pos)) {
-                    return NGX_HTTP_PARSE_INVALID_METHOD;
-                }
-
-            } else {
-                if (bvec16_is_invalid_method(method_vec, 16)) {
-                    return NGX_HTTP_PARSE_INVALID_METHOD;
-                }
-
-                p += 16;
-                if (b->last - p < 16) {
-                    goto again;
-                }
-                method_vec = _mm_loadu_si128((__m128i *)p);
-                --p;
-            }
-
-            break;
-#else
             if (ch == ' ') {
                 r->method_end = p - 1;
                 m = r->request_start;
@@ -546,7 +294,6 @@ http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
             }
 
             break;
-#endif
 
         /* space* before URI */
         case sw_spaces_before_uri:
@@ -1056,8 +803,6 @@ http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
             }
         }
     }
-
-again:
 
     b->pos = p;
     r->state = state;

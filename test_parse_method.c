@@ -78,11 +78,13 @@ typedef uint8_t u_char;
 
 /* gcc, icc, msvc and others compile these switches as an jump table */
 
+#if 0
+
 int
-ngx_http_parse_request_line(http_request *r, const uint8_t *b, int blen)
+ngx_http_parse_request_line(http_request *r, uint8_t *b, int blen)
 {
     u_char  c, ch;
-    const u_char *p, *m;
+    u_char *p, *m;
     enum {
         sw_start = 0,
         sw_newline,
@@ -828,7 +830,7 @@ done:
 }
 
 int
-ngx_http_parse_method(http_request *r, const uint8_t *b, int blen)
+ngx_http_parse_method(http_request *r, uint8_t *b, int blen)
 {
     r->method = NGX_HTTP_UNKNOWN;
     r->state = 0;
@@ -837,7 +839,7 @@ ngx_http_parse_method(http_request *r, const uint8_t *b, int blen)
 
 #define BENCH_REPEAT_COUNT 10000000
 
-uint64_t bench_ngx(const uint8_t b[], int blen) {
+uint64_t bench_ngx(uint8_t b[], int blen) {
     uint64_t sum = 0;
     for (int i = 0; i < BENCH_REPEAT_COUNT; i++) {
         http_request r;
@@ -850,7 +852,7 @@ uint64_t bench_ngx(const uint8_t b[], int blen) {
     return sum;
 }
 
-uint64_t bench_simd(const uint8_t b[], int blen) {
+uint64_t bench_simd(uint8_t b[], int blen) {
     uint64_t sum = 0;
     for (int i = 0; i < BENCH_REPEAT_COUNT; i++) {
         http_request r;
@@ -879,8 +881,10 @@ void bench(const char *name, uint64_t (*f)(const uint8_t b[], int blen), const u
 }
 
 #include <emmintrin.h>
+#endif
 
 int main() {
+#if 0
     http_request r;
     #define B1LEN 16
     const uint8_t b1[B1LEN] = {
@@ -1014,5 +1018,6 @@ int main() {
     bench("simd_head", bench_simd, b4, B4LEN);
     bench("ngx_query", bench_ngx, b5, B5LEN);
     bench("simd_qury", bench_simd, b5, B5LEN);
+#endif
     return 0;
 }

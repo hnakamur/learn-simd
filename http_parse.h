@@ -2,6 +2,7 @@
 #define HTTP_PARSE_H_
 
 #include <stdint.h>
+#include <stdlib.h>
 
 #define  NGX_OK          0
 #define  NGX_ERROR      -1
@@ -10,6 +11,12 @@
 #define  NGX_DONE       -4
 #define  NGX_DECLINED   -5
 #define  NGX_ABORT      -6
+
+#define NGX_HTTP_VERSION_9                 9
+#define NGX_HTTP_VERSION_10                1000
+#define NGX_HTTP_VERSION_11                1001
+#define NGX_HTTP_VERSION_20                2000
+#define NGX_HTTP_VERSION_30                3000
 
 #define NGX_HTTP_UNKNOWN                   0x00000001
 #define NGX_HTTP_GET                       0x00000002
@@ -39,6 +46,10 @@
 
 #define NGX_HTTP_PARSE_INVALID_HEADER      14
 
+#define LF     (u_char) '\n'
+#define CR     (u_char) '\r'
+
+typedef intptr_t        ngx_int_t;
 typedef uintptr_t       ngx_uint_t;
 typedef uint8_t         u_char;
 
@@ -47,12 +58,21 @@ typedef struct {
     u_char     *data;
 } ngx_str_t;
 
+typedef struct ngx_buf_s  ngx_buf_t;
+
+struct ngx_buf_s {
+    u_char          *pos;
+    u_char          *last;
+    off_t            file_pos;
+    off_t            file_last;
+
+    u_char          *start;         /* start of buffer */
+    u_char          *end;           /* end of buffer */
+};
+
 typedef struct {
     int                               method;
     ngx_uint_t                        http_version;
-
-    const u_char                     *request_start;
-    const u_char                     *method_end;
 
     ngx_str_t                         http_protocol;
 
@@ -84,8 +104,10 @@ typedef struct {
 
     unsigned                          http_minor:16;
     unsigned                          http_major:16;
-} http_request;
+} ngx_http_request_t;
 
-int http_parse_request_line(http_request *r, ngx_buf_t *b);
+int http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b);
+ngx_int_t ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b);
+
 
 #endif /* HTTP_PARSE_H_ */

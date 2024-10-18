@@ -3,3 +3,4 @@ index_of_byte
 test_bytes_eq
 test_invalid_method
 test_parse_method
+test_parse_request
